@@ -34,6 +34,7 @@ def newRound():
     window["_DEALER_TOTAL"].update(dealer_hand[0].val)
     # Make Buttons Clickable
     window["_PLAYER_DRAW"].update(disabled=False)
+    window["_STAND"].update(disabled=False)
 
 
 def getTotal(hand):
@@ -50,19 +51,21 @@ def hit():
 
 
 def endTurn():
-    # Handles end of player action
+    # Handles end of player action and performs dealer's actions
     window["_PLAYER_DRAW"].update(disabled=True)
+    window["_STAND"].update(disabled=True)
     revealDealerHoleCard()
 
 
 def revealDealerHoleCard():
     window["1_DEALER_CARD"].update(filename="images/{}.png".format(dealer_hand[1].id))
+    window["_DEALER_TOTAL"].update(getTotal(dealer_hand))
 
 
 top_bar = [
+    sg.Text("$" + str(money)),
     sg.Text("Blackjack 2022", font=("SEC Bengali", 20)),
     sg.Column([[sg.Image(filename="images/icon.png", tooltip="Logo styled using MS Paint")]], justification='right'),
-    [sg.Text("$" + str(money))],
 ]
 
 dealer_side = [
@@ -95,7 +98,7 @@ layout = [
     [sg.Button(button_text="manual_end_round", key="manual_end_round")]
 ]
 
-window = sg.Window(title="durrr", layout=layout, size=(400, 550))
+window = sg.Window(title="BlackJack", layout=layout, size=(400, 550))
 
 while True:
     event, values = window.read()
