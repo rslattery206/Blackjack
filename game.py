@@ -1,7 +1,6 @@
 import random
 
 deck = []
-number_of_decks = 6
 money = 100
 
 
@@ -48,9 +47,11 @@ def populateDeck():
 
 
 def drawCard():
-    deck.pop(0)
+    return deck.pop(0)
 
 
-for each_deck in range(0, number_of_decks):
-    populateDeck()
+def initializeGame(number_of_decks=6):
+    for each_deck in range(0, number_of_decks):
+        populateDeck()
+    random.shuffle(deck)
 
