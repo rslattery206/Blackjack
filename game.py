@@ -54,4 +54,3 @@ def initializeGame(number_of_decks=6):
     for each_deck in range(0, number_of_decks):
         populateDeck()
     random.shuffle(deck)
-

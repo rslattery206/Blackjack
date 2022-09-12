@@ -4,8 +4,7 @@ import game
 
 game.initializeGame()
 deck = game.deck
-money = game.money
-wager = 0
+wager = 5
 my_hand = []
 dealer_hand = []
 
@@ -30,11 +29,13 @@ def newRound():
     window["2_PLAYER_CARD"].update(filename="images/blank.png")
     window["3_PLAYER_CARD"].update(filename="images/blank.png")
     window["4_PLAYER_CARD"].update(filename="images/blank.png")
+    window["5_PLAYER_CARD"].update(filename="images/blank.png")
     window["0_DEALER_CARD"].update(filename="images/{}.png".format(dealer_hand[0].id))
     window["1_DEALER_CARD"].update(filename="images/hidden_card.png")
     window["2_DEALER_CARD"].update(filename="images/blank.png")
     window["3_DEALER_CARD"].update(filename="images/blank.png")
     window["4_DEALER_CARD"].update(filename="images/blank.png")
+    window["5_DEALER_CARD"].update(filename="images/blank.png")
     # Update Totals
     window["_PLAYER_TOTAL"].update(getTotal(my_hand))
     window["_DEALER_TOTAL"].update(dealer_hand[0].val)
@@ -64,7 +65,7 @@ def containsAce(hand):
 def hit():
     my_hand.append(game.drawCard())
     if (getTotal(my_hand)) > 21:
-        if containsAce(my_hand):  # bust
+        if containsAce(my_hand):
             my_hand[containsAce(my_hand)].val = 1
         else:
             endTurn(True)
@@ -78,6 +79,16 @@ def dealer_hit():
     window["_DEALER_TOTAL"].update(getTotal(dealer_hand))
     new_card_index = len(dealer_hand) - 1
     window[str(new_card_index) + "_DEALER_CARD"].update(filename="images/{}.png".format(dealer_hand[new_card_index].id))
+
+
+def go_broke():
+    # Function for force-quitting the game (e.g when the player runs out of money)
+    no_money_window = sg.Window(title="You're broke", layout=[[sg.Text("Looks like you've gone broke. Goodbye!")]])
+    while True:
+        event2, values2 = no_money_window.read()
+        if event2 == sg.WIN_CLOSED:
+            window.close()
+            break
 
 
 def endTurn(bust=False):
@@ -112,6 +123,12 @@ def endTurn(bust=False):
     game.money = new_money
     window["_MONEY"].update("$" + str(game.money))
     window["_NEW_ROUND"].update(disabled=False)
+    if (wager + 5) > game.money:
+        window["+5"].update(disabled=True)
+    if (wager - 5) < 5:
+        window["-5"].update(disabled=True)
+    if game.money <= 0:
+        go_broke()
 
 
 def revealDealerHoleCard():
@@ -120,7 +137,6 @@ def revealDealerHoleCard():
 
 
 top_bar = [
-    sg.Text("$" + str(money), key="_MONEY"),
     sg.Text("Blackjack 2022", font=("SEC Bengali", 20)),
     sg.Column([[sg.Image(filename="images/icon.png", tooltip="Logo styled using MS Paint")]], justification='right'),
 ]
@@ -132,7 +148,8 @@ dealer_side = [
      sg.Image(filename="images/blank.png", key="1_DEALER_CARD"),
      sg.Image(filename="images/blank.png", key="2_DEALER_CARD"),
      sg.Image(filename="images/blank.png", key="3_DEALER_CARD"),
-     sg.Image(filename="images/blank.png", key="4_DEALER_CARD")]
+     sg.Image(filename="images/blank.png", key="4_DEALER_CARD"),
+     sg.Image(filename="images/blank.png", key="5_DEALER_CARD")]
 ]
 
 player_side = sg.Column([
@@ -142,7 +159,8 @@ player_side = sg.Column([
      sg.Image(filename="images/blank.png", key="1_PLAYER_CARD"),
      sg.Image(filename="images/blank.png", key="2_PLAYER_CARD"),
      sg.Image(filename="images/blank.png", key="3_PLAYER_CARD"),
-     sg.Image(filename="images/blank.png", key="4_PLAYER_CARD")]
+     sg.Image(filename="images/blank.png", key="4_PLAYER_CARD"),
+     sg.Image(filename="images/blank.png", key="5_PLAYER_CARD")]
 ])
 
 layout = [
@@ -153,20 +171,49 @@ layout = [
     [sg.Button(button_text="Hit", key="_PLAYER_DRAW", disabled=True),
      sg.Button(button_text="Stand", key="_STAND", disabled=True)],
     # Betting
-    [sg.In(5, key="_BET", size=(10, 1)), sg.Button(button_text="Place Bet and Deal", key="_NEW_ROUND")],
+    [
+        [sg.Button("-5", key="-5", size=(2, 1), disabled=True),
+         sg.Button("+5", key="+5", size=(2, 1))],
+        [sg.Text("$" + str(game.money), key="_MONEY", font=("SEC Bengali", 20), text_color="lime"),
+         sg.In(5, key="_BET", size=(4, 1), disabled=True),
+         sg.Button(button_text="Place Bet and Deal", key="_NEW_ROUND"), ]
+    ],
 
 ]
 
-window = sg.Window(title="BlackJack", layout=layout, size=(400, 550))
+window = sg.Window(title="BlackJack", layout=layout, size=(470, 550))
 while True:
     event, values = window.read()
     if event == "_PLAYER_DRAW":
         hit()
+        if wager > game.money:
+            wager = game.money
+            window["+5"].update(disabled=True)
+            window["_BET"].update(wager)
     if event == "_STAND":
-        endTurn(False)
+        endTurn(bust=False)
+        if wager > game.money:
+            wager = game.money
+            window["+5"].update(disabled=True)
+            window["_BET"].update(wager)
     if event == "_NEW_ROUND":
-        newRound()
         wager = int(values["_BET"])
+        newRound()
+
+    if event == "+5":
+        wager += 5
+        window["_BET"].update(wager)
+        if (wager + 5) > game.money:
+            window["+5"].update(disabled=True)
+        window["-5"].update(disabled=False)
+
+    if event == "-5":
+        wager -= 5
+        window["_BET"].update(wager)
+        if (wager - 5) < 5:
+            window["-5"].update(disabled=True)
+        window["+5"].update(disabled=False)
+
     elif event == sg.WIN_CLOSED:
         break
 
