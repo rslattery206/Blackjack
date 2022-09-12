@@ -19,6 +19,11 @@ def newRound():
     my_hand.append(game.drawCard())
     dealer_hand.append(game.drawCard())
     window["_MONEY"].update("$" + str(game.money))
+    # Rare case where player or dealer is dealt 2 aces
+    if getTotal(my_hand) == 22:
+        my_hand[1].val = 1
+    if getTotal(dealer_hand) == 22:
+        dealer_hand[1].val = 1
     # Update Cards
     window["0_PLAYER_CARD"].update(filename="images/{}.png".format(my_hand[0].id))
     window["1_PLAYER_CARD"].update(filename="images/{}.png".format(my_hand[1].id))
@@ -47,10 +52,22 @@ def getTotal(hand):
     return total
 
 
+def containsAce(hand):
+    i = 0
+    for card in hand:
+        if card.val == 11:
+            return i
+        i += 1
+    return None
+
+
 def hit():
     my_hand.append(game.drawCard())
-    if (getTotal(my_hand)) > 21:  # bust
-        endTurn(True)
+    if (getTotal(my_hand)) > 21:
+        if containsAce(my_hand):  # bust
+            my_hand[containsAce(my_hand)].val = 1
+        else:
+            endTurn(True)
     window["_PLAYER_TOTAL"].update(getTotal(my_hand))
     new_card_index = len(my_hand) - 1
     window[str(new_card_index) + "_PLAYER_CARD"].update(filename="images/{}.png".format(my_hand[new_card_index].id))
@@ -67,12 +84,17 @@ def endTurn(bust=False):
     window["_PLAYER_DRAW"].update(disabled=True)
     window["_STAND"].update(disabled=True)
     revealDealerHoleCard()
-    # Dealer performs his duties here...
+    # Dealer action:
     dealer_bust = False
     if not bust:
-        while getTotal(dealer_hand) < 17:
+        while getTotal(dealer_hand) < 17 or (getTotal(dealer_hand) == 17 and containsAce(dealer_hand)):
             dealer_hit()
             dealer_bust = (getTotal(dealer_hand) > 21)
+            if dealer_bust and containsAce(dealer_hand):
+                dealer_bust = False
+                dealer_hand[containsAce(dealer_hand)].val = 1
+            if getTotal(dealer_hand) == 17 and containsAce(dealer_hand):
+                dealer_hit()
 
     new_money = 0
     if len(my_hand) == 2 and getTotal(my_hand) == 21:  # Blackjack
