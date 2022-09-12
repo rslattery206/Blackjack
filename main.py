@@ -9,15 +9,34 @@ my_hand = []
 dealer_hand = []
 
 
+#  TODO List:
+#  Instant blackjack win
+#  Dealer Blackjack
+#  Insurance
+#  Double Down
+#
+# TODO List (Further down the road):
+# Settings (change colors, theme, set money, misc. preferences)
+# Logging (keeps tracks of all data)
+
+
 def newRound():
     # Handles the creation of a new round
     my_hand.clear()
     dealer_hand.clear()
+
+    # For hard-coding cards:
+    # card1 = game.Card(value_string="A", suit="S")
+    # card2 = game.Card(value_string="9", suit="S")
+    # card1.val = 11
+    # card2.val = 9
+    # my_hand.append(card1)
+    # my_hand.append(card2)
+
+    my_hand.append(game.drawCard())
     my_hand.append(game.drawCard())
     dealer_hand.append(game.drawCard())
-    my_hand.append(game.drawCard())
     dealer_hand.append(game.drawCard())
-    window["_MONEY"].update("$" + str(game.money))
     # Rare case where player or dealer is dealt 2 aces
     if getTotal(my_hand) == 22:
         my_hand[1].val = 1
@@ -43,7 +62,8 @@ def newRound():
     window["_PLAYER_DRAW"].update(disabled=False)
     window["_STAND"].update(disabled=False)
     window["_NEW_ROUND"].update(disabled=True)
-    window["_BET"].update(disabled=True)
+    window["+5"].update(disabled=True)
+    window["-5"].update(disabled=True)
 
 
 def getTotal(hand):
@@ -65,7 +85,7 @@ def containsAce(hand):
 def hit():
     my_hand.append(game.drawCard())
     if (getTotal(my_hand)) > 21:
-        if containsAce(my_hand):
+        if containsAce(my_hand) is not None:
             my_hand[containsAce(my_hand)].val = 1
         else:
             endTurn(True)
@@ -95,34 +115,37 @@ def endTurn(bust=False):
     window["_PLAYER_DRAW"].update(disabled=True)
     window["_STAND"].update(disabled=True)
     revealDealerHoleCard()
-    # Dealer action:
-    dealer_bust = False
-    if not bust:
-        while getTotal(dealer_hand) < 17 or (getTotal(dealer_hand) == 17 and containsAce(dealer_hand)):
-            dealer_hit()
-            dealer_bust = (getTotal(dealer_hand) > 21)
-            if dealer_bust and containsAce(dealer_hand):
-                dealer_bust = False
-                dealer_hand[containsAce(dealer_hand)].val = 1
-            if getTotal(dealer_hand) == 17 and containsAce(dealer_hand):
-                dealer_hit()
-
     new_money = 0
     if len(my_hand) == 2 and getTotal(my_hand) == 21:  # Blackjack
         new_money = game.money + 1.5 * wager
-    elif bust:  # Player busted and lost
-        new_money = game.money - wager
-    elif not bust and dealer_bust:
-        new_money = game.money + wager
-    elif getTotal(dealer_hand) < getTotal(my_hand):
-        new_money = game.money + wager
-    elif getTotal(dealer_hand) > getTotal(my_hand):
-        new_money = game.money - wager
-    elif getTotal(dealer_hand) == getTotal(my_hand):
-        new_money = game.money
+    else:
+        # Dealer action:
+        dealer_bust = False
+        if not bust:
+            while getTotal(dealer_hand) < 17 or (getTotal(dealer_hand) == 17 and containsAce(dealer_hand)):
+                dealer_hit()
+                dealer_bust = (getTotal(dealer_hand) > 21)
+                if dealer_bust and containsAce(dealer_hand):
+                    dealer_bust = False
+                    dealer_hand[containsAce(dealer_hand)].val = 1
+                if getTotal(dealer_hand) == 17 and containsAce(dealer_hand):
+                    dealer_hit()
+
+        if bust:  # Player busted and lost
+            new_money = game.money - wager
+        elif not bust and dealer_bust:
+            new_money = game.money + wager
+        elif getTotal(dealer_hand) < getTotal(my_hand):
+            new_money = game.money + wager
+        elif getTotal(dealer_hand) > getTotal(my_hand):
+            new_money = game.money - wager
+        elif getTotal(dealer_hand) == getTotal(my_hand):
+            new_money = game.money
     game.money = new_money
     window["_MONEY"].update("$" + str(game.money))
     window["_NEW_ROUND"].update(disabled=False)
+    window["-5"].update(disabled=False)
+    window["+5"].update(disabled=False)
     if (wager + 5) > game.money:
         window["+5"].update(disabled=True)
     if (wager - 5) < 5:
@@ -190,15 +213,19 @@ while True:
             wager = game.money
             window["+5"].update(disabled=True)
             window["_BET"].update(wager)
+
     if event == "_STAND":
         endTurn(bust=False)
         if wager > game.money:
             wager = game.money
             window["+5"].update(disabled=True)
             window["_BET"].update(wager)
+
     if event == "_NEW_ROUND":
         wager = int(values["_BET"])
         newRound()
+        if getTotal(my_hand) == 21:
+            endTurn(bust=False)
 
     if event == "+5":
         wager += 5
