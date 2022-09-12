@@ -1,3 +1,5 @@
+import math
+
 import PySimpleGUI as sg
 from time import sleep
 import game
@@ -11,7 +13,6 @@ sleep_time = 0.5
 
 
 #  TODO List:
-#  Instant blackjack win
 #  Dealer Blackjack
 #  Insurance
 #  Double Down
@@ -62,6 +63,8 @@ def newRound():
     # Configure Buttons
     window["_PLAYER_DRAW"].update(disabled=False)
     window["_STAND"].update(disabled=False)
+    if (wager * 2) <= game.money:
+        window["_DOUBLE"].update(disabled=False)
     window["_NEW_ROUND"].update(disabled=True)
     window["+5"].update(disabled=True)
     window["-5"].update(disabled=True)
@@ -93,6 +96,7 @@ def hit():
     window["_PLAYER_TOTAL"].update(getTotal(my_hand))
     new_card_index = len(my_hand) - 1
     window[str(new_card_index) + "_PLAYER_CARD"].update(filename="images/{}.png".format(my_hand[new_card_index].id))
+    window["_DOUBLE"].update(disabled=True)
 
 
 def dealer_hit():
@@ -115,6 +119,7 @@ def go_broke():
 def endTurn(bust=False):
     window["_PLAYER_DRAW"].update(disabled=True)
     window["_STAND"].update(disabled=True)
+    window["_DOUBLE"].update(disabled=True)
     revealDealerHoleCard()
     new_money = 0
     if len(my_hand) == 2 and getTotal(my_hand) == 21:  # Blackjack
@@ -134,10 +139,10 @@ def endTurn(bust=False):
 
         if bust:  # Player busted and lost
             new_money = game.money - wager
-            window["_MAIN"].update("Bust. You lose.")
+            window["_MAIN"].update("You lose.")
         elif not bust and dealer_bust:
             new_money = game.money + wager
-            window["_MAIN"].update("Dealer Busts. You win!")
+            window["_MAIN"].update("You win!")
         elif getTotal(dealer_hand) < getTotal(my_hand):
             window["_MAIN"].update("You win!")
             new_money = game.money + wager
@@ -156,8 +161,8 @@ def endTurn(bust=False):
         window["+5"].update(disabled=True)
     if (wager - 5) < 5:
         window["-5"].update(disabled=True)
-    if game.money <= 0:
-        window["_MAIN"].update("  :(   ")
+    if game.money < 5:
+        window["_MAIN"].update("$5 minimum bet :(")
         go_broke()
 
 
@@ -193,13 +198,17 @@ player_side = sg.Column([
      sg.Image(filename="images/blank.png", key="5_PLAYER_CARD")]
 ])
 
+action_buttons = [sg.Button(button_text="Hit", key="_PLAYER_DRAW", disabled=True),
+                  sg.Button(button_text="Stand", key="_STAND", disabled=True),
+                  sg.Button(button_text="Double", key="_DOUBLE", disabled=True),
+                  ]
+
 layout = [
     top_bar,
     [dealer_side],
     [player_side],
     # Buttons
-    [sg.Button(button_text="Hit", key="_PLAYER_DRAW", disabled=True),
-     sg.Button(button_text="Stand", key="_STAND", disabled=True)],
+    action_buttons,
     # Betting
     [
         [sg.Button("-5", key="-5", size=(2, 1), disabled=True),
@@ -219,7 +228,19 @@ while True:
         hit()
         sleep(sleep_time)
         if wager > game.money:
-            wager = game.money
+            wager = math.floor(game.money)
+            window["+5"].update(disabled=True)
+            window["_BET"].update(wager)
+
+    if event == "_DOUBLE":
+        sleep(sleep_time)
+        wager = wager * 2
+        window["_BET"].update(wager)
+        hit()
+        if getTotal(my_hand) < 21:
+            endTurn(bust=False)
+        if wager > game.money:
+            wager = math.floor(game.money)
             window["+5"].update(disabled=True)
             window["_BET"].update(wager)
 
@@ -227,7 +248,7 @@ while True:
         sleep(sleep_time)
         endTurn(bust=False)
         if wager > game.money:
-            wager = game.money
+            wager = math.floor(game.money)
             window["+5"].update(disabled=True)
             window["_BET"].update(wager)
 
