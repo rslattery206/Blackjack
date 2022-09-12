@@ -1,5 +1,5 @@
 import PySimpleGUI as sg
-
+from time import sleep
 import game
 
 game.initializeGame()
@@ -7,6 +7,7 @@ deck = game.deck
 wager = 5
 my_hand = []
 dealer_hand = []
+sleep_time = 0.5
 
 
 #  TODO List:
@@ -133,14 +134,19 @@ def endTurn(bust=False):
 
         if bust:  # Player busted and lost
             new_money = game.money - wager
+            window["_MAIN"].update("Bust. You lose.")
         elif not bust and dealer_bust:
             new_money = game.money + wager
+            window["_MAIN"].update("Dealer Busts. You win!")
         elif getTotal(dealer_hand) < getTotal(my_hand):
+            window["_MAIN"].update("You win!")
             new_money = game.money + wager
         elif getTotal(dealer_hand) > getTotal(my_hand):
             new_money = game.money - wager
+            window["_MAIN"].update("You lose.")
         elif getTotal(dealer_hand) == getTotal(my_hand):
             new_money = game.money
+            window["_MAIN"].update("Push.")
     game.money = new_money
     window["_MONEY"].update("$" + str(game.money))
     window["_NEW_ROUND"].update(disabled=False)
@@ -151,6 +157,7 @@ def endTurn(bust=False):
     if (wager - 5) < 5:
         window["-5"].update(disabled=True)
     if game.money <= 0:
+        window["_MAIN"].update("  :(   ")
         go_broke()
 
 
@@ -160,7 +167,7 @@ def revealDealerHoleCard():
 
 
 top_bar = [
-    sg.Text("Blackjack 2022", font=("SEC Bengali", 20)),
+    sg.Text("Blackjack 2022", font=("Times New Roman", 20, "bold")),
     sg.Column([[sg.Image(filename="images/icon.png", tooltip="Logo styled using MS Paint")]], justification='right'),
 ]
 
@@ -199,7 +206,8 @@ layout = [
          sg.Button("+5", key="+5", size=(2, 1))],
         [sg.Text("$" + str(game.money), key="_MONEY", font=("SEC Bengali", 20), text_color="lime"),
          sg.In(5, key="_BET", size=(4, 1), disabled=True),
-         sg.Button(button_text="Place Bet and Deal", key="_NEW_ROUND"), ]
+         sg.Button(button_text="Place Bet and Deal", key="_NEW_ROUND"),
+         sg.Text("Place your bet", font=("Times New Roman", 20), key="_MAIN")]
     ],
 
 ]
@@ -209,12 +217,14 @@ while True:
     event, values = window.read()
     if event == "_PLAYER_DRAW":
         hit()
+        sleep(sleep_time)
         if wager > game.money:
             wager = game.money
             window["+5"].update(disabled=True)
             window["_BET"].update(wager)
 
     if event == "_STAND":
+        sleep(sleep_time)
         endTurn(bust=False)
         if wager > game.money:
             wager = game.money
@@ -222,8 +232,10 @@ while True:
             window["_BET"].update(wager)
 
     if event == "_NEW_ROUND":
+        sleep(sleep_time)
         wager = int(values["_BET"])
         newRound()
+        window["_MAIN"].update("Your action.")
         if getTotal(my_hand) == 21:
             endTurn(bust=False)
 
