@@ -37,8 +37,8 @@ def newRound():
     card3.val = 2
     # my_hand.append(card1)
     # my_hand.append(card2)
-    # dealer_hand.append(card2)
     # dealer_hand.append(card1)
+    # dealer_hand.append(card3)
     my_hand.append(game.drawCard())
     my_hand.append(game.drawCard())
     dealer_hand.append(game.drawCard())
@@ -330,6 +330,8 @@ while True:
             game.money -= wager / 2
             window["_MONEY"].update(game.money)
             enableGameButtons()
+            if getTotal(my_hand) == 21:
+                endTurn(False)
 
     if event == "_NO_INSURE":
         disableInsuranceButtons()
@@ -338,6 +340,8 @@ while True:
         else:
             window["_MAIN"].update("Nobody home.")
             enableGameButtons()
+            if getTotal(my_hand) == 21:
+                endTurn(False)
 
     if event == "+5":
         wager += 5
