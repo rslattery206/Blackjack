@@ -16,7 +16,8 @@ sleep_time = 0.5
 #  Dealer Blackjack
 #  Insurance
 #  Double Down
-#
+#  Make functions to enable/disable buttons (save a lot of lines)
+#  FIXME: Shits the bed when player gets a blackjack but first dealer card is an ace
 # TODO List (Further down the road):
 # Settings (change colors, theme, set money, misc. preferences)
 # Logging (keeps tracks of all data)
@@ -28,13 +29,16 @@ def newRound():
     dealer_hand.clear()
 
     # For hard-coding cards:
-    # card1 = game.Card(value_string="A", suit="S")
-    # card2 = game.Card(value_string="9", suit="S")
-    # card1.val = 11
-    # card2.val = 9
+    card1 = game.Card(value_string="A", suit="S")
+    card2 = game.Card(value_string="10", suit="S")
+    card3 = game.Card(value_string="2", suit="H")
+    card1.val = 11
+    card2.val = 10
+    card3.val = 2
     # my_hand.append(card1)
     # my_hand.append(card2)
-
+    # dealer_hand.append(card2)
+    # dealer_hand.append(card1)
     my_hand.append(game.drawCard())
     my_hand.append(game.drawCard())
     dealer_hand.append(game.drawCard())
@@ -68,6 +72,18 @@ def newRound():
     window["_NEW_ROUND"].update(disabled=True)
     window["+5"].update(disabled=True)
     window["-5"].update(disabled=True)
+
+    # Dealer Blackjack cases and insurance
+    if dealer_hand[0].val == 10 and dealer_hand[1].val == 11:
+        endTurn(False)
+    elif dealer_hand[0].val == 11:  # insurance scenario
+        if (game.money - (1.5 * wager)) > 0:
+            window["_INSURE"].update(disabled=False)
+        window["_NO_INSURE"].update(disabled=False)
+        disableGameButtons()
+        window["_MAIN"].update("Insurance?")
+    else:
+        window["_MAIN"].update("Your action.")
 
 
 def getTotal(hand):
@@ -116,14 +132,30 @@ def go_broke():
             break
 
 
+def updateMoney(amount=5, win=True, blackjack=False, push=False):
+    if push:
+        window["_MAIN"].update("Push.")
+        return
+    if blackjack:
+        game.money += amount * 1.5
+        return
+    if win:
+        game.money += amount
+        window["_MAIN"].update("You win!")
+    else:
+        game.money -= amount
+        window["_MAIN"].update("You lose.")
+
+
 def endTurn(bust=False):
-    window["_PLAYER_DRAW"].update(disabled=True)
-    window["_STAND"].update(disabled=True)
-    window["_DOUBLE"].update(disabled=True)
+    disableGameButtons()
     revealDealerHoleCard()
-    new_money = 0
     if len(my_hand) == 2 and getTotal(my_hand) == 21:  # Blackjack
-        new_money = game.money + 1.5 * wager
+        if getTotal(dealer_hand) == 21:
+            updateMoney(push=True)
+        else:
+            updateMoney(wager, True, blackjack=True)
+
     else:
         # Dealer action:
         dealer_bust = False
@@ -138,25 +170,17 @@ def endTurn(bust=False):
                     dealer_hit()
 
         if bust:  # Player busted and lost
-            new_money = game.money - wager
-            window["_MAIN"].update("You lose.")
+            updateMoney(wager, False)
         elif not bust and dealer_bust:
-            new_money = game.money + wager
-            window["_MAIN"].update("You win!")
+            updateMoney(wager, True)
         elif getTotal(dealer_hand) < getTotal(my_hand):
-            window["_MAIN"].update("You win!")
-            new_money = game.money + wager
+            updateMoney(wager, True)
         elif getTotal(dealer_hand) > getTotal(my_hand):
-            new_money = game.money - wager
-            window["_MAIN"].update("You lose.")
+            updateMoney(wager, False)
         elif getTotal(dealer_hand) == getTotal(my_hand):
-            new_money = game.money
-            window["_MAIN"].update("Push.")
-    game.money = new_money
+            updateMoney(push=True)
     window["_MONEY"].update("$" + str(game.money))
-    window["_NEW_ROUND"].update(disabled=False)
-    window["-5"].update(disabled=False)
-    window["+5"].update(disabled=False)
+    enableWagerButtons()
     if (wager + 5) > game.money:
         window["+5"].update(disabled=True)
     if (wager - 5) < 5:
@@ -169,6 +193,36 @@ def endTurn(bust=False):
 def revealDealerHoleCard():
     window["1_DEALER_CARD"].update(filename="images/{}.png".format(dealer_hand[1].id))
     window["_DEALER_TOTAL"].update(getTotal(dealer_hand))
+
+
+def disableWagerButtons():
+    window["_NEW_ROUND"].update(disabled=True)
+    window["+5"].update(disabled=True)
+    window["-5"].update(disabled=True)
+
+
+def enableWagerButtons():
+    window["_NEW_ROUND"].update(disabled=False)
+    window["+5"].update(disabled=False)
+    window["-5"].update(disabled=False)
+
+
+def disableGameButtons():
+    window["_PLAYER_DRAW"].update(disabled=True)
+    window["_STAND"].update(disabled=True)
+    window["_DOUBLE"].update(disabled=True)
+
+
+def enableGameButtons():
+    window["_PLAYER_DRAW"].update(disabled=False)
+    window["_STAND"].update(disabled=False)
+    if (wager * 2) <= game.money:
+        window["_DOUBLE"].update(disabled=False)
+
+
+def disableInsuranceButtons():
+    window["_INSURE"].update(disabled=True)
+    window["_NO_INSURE"].update(disabled=True)
 
 
 top_bar = [
@@ -201,6 +255,9 @@ player_side = sg.Column([
 action_buttons = [sg.Button(button_text="Hit", key="_PLAYER_DRAW", disabled=True),
                   sg.Button(button_text="Stand", key="_STAND", disabled=True),
                   sg.Button(button_text="Double", key="_DOUBLE", disabled=True),
+                  sg.Button(button_text="Split", key="_SPLIT", disabled=True),
+                  sg.Button(button_text="Insurance", key="_INSURE", disabled=True),
+                  sg.Button(button_text="No Insurance", key="_NO_INSURE", disabled=True)
                   ]
 
 layout = [
@@ -211,7 +268,8 @@ layout = [
     action_buttons,
     # Betting
     [
-        [sg.Button("-5", key="-5", size=(2, 1), disabled=True),
+        [sg.Text("Bet:", font=("SEC Bengali", 15)),
+         sg.Button("-5", key="-5", size=(2, 1), disabled=True),
          sg.Button("+5", key="+5", size=(2, 1))],
         [sg.Text("$" + str(game.money), key="_MONEY", font=("SEC Bengali", 20), text_color="lime"),
          sg.In(5, key="_BET", size=(4, 1), disabled=True),
@@ -225,6 +283,7 @@ window = sg.Window(title="BlackJack", layout=layout, size=(470, 550))
 while True:
     event, values = window.read()
     if event == "_PLAYER_DRAW":
+        disableInsuranceButtons()
         hit()
         sleep(sleep_time)
         if wager > game.money:
@@ -233,6 +292,7 @@ while True:
             window["_BET"].update(wager)
 
     if event == "_DOUBLE":
+        disableInsuranceButtons()
         sleep(sleep_time)
         wager = wager * 2
         window["_BET"].update(wager)
@@ -245,6 +305,7 @@ while True:
             window["_BET"].update(wager)
 
     if event == "_STAND":
+        disableInsuranceButtons()
         sleep(sleep_time)
         endTurn(bust=False)
         if wager > game.money:
@@ -256,9 +317,27 @@ while True:
         sleep(sleep_time)
         wager = int(values["_BET"])
         newRound()
-        window["_MAIN"].update("Your action.")
-        if getTotal(my_hand) == 21:
+        if getTotal(my_hand) == 21 and dealer_hand[0].val != 11:
             endTurn(bust=False)
+
+    if event == "_INSURE":
+        disableInsuranceButtons()
+        if getTotal(dealer_hand) == 21:
+            game.money += wager
+            endTurn(False)
+        else:
+            window["_MAIN"].update("Nobody home.")
+            game.money -= wager / 2
+            window["_MONEY"].update(game.money)
+            enableGameButtons()
+
+    if event == "_NO_INSURE":
+        disableInsuranceButtons()
+        if getTotal(dealer_hand) == 21:
+            endTurn(False)
+        else:
+            window["_MAIN"].update("Nobody home.")
+            enableGameButtons()
 
     if event == "+5":
         wager += 5
